@@ -1,5 +1,5 @@
 import streamlit as st
-from src.database.config import supabase
+import supabase
 
 
 def public_lead_form(agent_id):
