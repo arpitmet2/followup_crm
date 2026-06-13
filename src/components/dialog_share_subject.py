@@ -6,7 +6,7 @@ import io
 
 @st.dialog("Share  Link")
 def share_subject_dialog(subject_name, admin_id, name):
-    app_domain = "arpit-patel-streamlit.app"
+    app_domain = "followupcrm"
     join_url = f"{app_domain}/?join-code={admin_id}"
 
     st.header("Scan to Join")
