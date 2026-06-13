@@ -1,5 +1,5 @@
 import streamlit as st
-import supabase
+import supabase 
 
 
 def public_lead_form(agent_id):
