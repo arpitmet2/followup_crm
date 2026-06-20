@@ -1,7 +1,7 @@
 import streamlit as st
 
 from datetime import datetime
-
+from streamlit_js_eval import streamlit_js_eval
 
 from src.database.db import (
     check_admin_user_name_exists,
@@ -21,6 +21,8 @@ from src.components.forgot_password_dialog import forgot_password_dialog
 
 
 from src.components.dialog_share_subject import share_subject_dialog
+
+from src.services.ai_assistant import get_ai_lead_suggestion
 
 
 today = datetime.now().date()
@@ -259,104 +261,184 @@ def admin_dashboard():
 
         contacts = filtered_contacts
 
+    
+    
+
+    screen_width = streamlit_js_eval(
+        js_expressions="window.innerWidth",
+        key="screen_width"
+    )
+
+    if not screen_width:
+        screen_width = 1200
+
+    is_mobile = screen_width < 1050
+    
+    
+    
     if contacts:
+        
+            if is_mobile:
 
-        table_columns = [
-            "",
-            #"contact_id",
-            "name",
-            "phone",
-            "email",
-            #"lead_source",
-            #"property_type",
-            #"budget",
-            "short_discussion",
-            "status",
-            "next_followup_at",
-            #"last_followup_at",
-            "created_at",
-            #"updated_at",
-            #"created_by",
-            ""
-        ]
-        table_widths = [
-            0.5,
-            1.5,
-            1.2,
-            1.8,
-            4.0,  # Discussion
-            1.2,
-            1.3,
-            1.3,
-            0.7
-        ]
+                selected_contacts = render_mobile_contacts(contacts)
 
-        header_cols = st.columns(table_widths)
-        for column, header_col in zip(table_columns, header_cols):
-            header_col.caption(column)
-
-        selected_contacts = []
-
-        for contact in contacts:
-            contact_id = contact["contact_id"]
-            row_cols = st.columns(table_widths)
-
-            is_selected = row_cols[0].checkbox(
-                "Select",
-                label_visibility="collapsed",
-                key=f"select_contact_{contact_id}"
-            )
-
-            if is_selected:
-                selected_contacts.append(contact)
-
-            for index, column in enumerate(table_columns[1:-1], start=1):
-                value = contact.get(column)
-                row_cols[index].write("" if value is None else value)
-
-            if row_cols[-1].button(
-                "✏️",
-                key=f"edit_contact_{contact_id}",
-                help="Edit this lead/contact"
-            ):
-                
-                st.session_state.selected_contact_id = (
-                    contact["contact_id"]
-                )
-                st.session_state.selected_contact_admin_id = (
-                    contact["created_by"]
-                )
-
-                st.switch_page(
-                    "pages/Follow_Up_Details.py"
-               )
-
-
-
-               # edit_contact_dialog(contact)
-
-        confirm_delete = st.checkbox(
-            "Confirm delete selected lead(s)",
-            key="confirm_delete_selected_contacts"
-        )
-
-        if st.button(
-            "🗑 Delete Selected Lead(s)",
-            use_container_width=True
-        ):
-            if len(selected_contacts) == 0:
-                st.warning("Please select at least one lead to delete.")
-            elif not confirm_delete:
-                st.warning("Please confirm before deleting selected lead(s).")
             else:
-                for contact in selected_contacts:
-                    delete_contact(
-                        contact_id=contact["contact_id"],
-                        admin_id=admin_id
+
+
+                table_columns = [
+                    "",
+                    #"contact_id",
+                    "name",
+                    "phone",
+                    "email",
+                    #"lead_source",
+                    #"property_type",
+                    #"budget",
+                    "short_discussion",
+                    "status",
+                    "next_followup_at",
+                    #"last_followup_at",
+                    "created_at",
+                    #"updated_at",
+                    #"created_by",
+                    ""
+                ]
+                table_widths = [
+                    0.5,
+                    1.5,
+                    1.2,
+                    1.8,
+                    4.0,  # Discussion
+                    1.2,
+                    1.3,
+                    1.3,
+                    0.7
+                ]
+
+
+
+
+                display_headers = [
+                    "",
+                    "Name",
+                    "Mobile",
+                    "Email",
+                    "Last Discussion",
+                    "Status",
+                    "Next Follow-Up",
+                    "Created On",
+                    ""
+                ]
+
+
+
+                header_cols = st.columns(table_widths)
+                for column, header_col in zip(display_headers, header_cols):
+                    header_col.caption(column)
+
+                selected_contacts = []
+
+                for contact in contacts:
+                    contact_id = contact["contact_id"]
+                    row_cols = st.columns(table_widths)
+
+                    is_selected = row_cols[0].checkbox(
+                        "Select",
+                        label_visibility="collapsed",
+                        key=f"select_contact_{contact_id}"
                     )
 
-                st.success("Selected contact(s) deleted successfully")
-                st.rerun()
+                    if is_selected:
+                        selected_contacts.append(contact)
+
+                    for index, column in enumerate(table_columns[1:-1], start=1):
+                        value = contact.get(column)
+
+                        if value and column == "next_followup_at":
+                            try:
+                                value = datetime.fromisoformat(
+                                    str(value).replace("Z", "+00:00")
+                                ).strftime("%-d-%b-%Y | %H:%M:%S")
+                                
+                                
+
+
+
+
+                            except:
+                                pass
+                        if value and column == "created_at":
+                            try:
+                                value = datetime.fromisoformat(
+                                    str(value).replace("Z", "+00:00")
+                                ).strftime("%-d-%b-%Y | %H:%M:%S")
+                            except:
+                                pass
+
+                        row_cols[index].write("" if value is None else value)
+
+                    action_col1, action_col2 = row_cols[-1].columns(2)
+
+                    with action_col1:
+                        if st.button(
+                            "✏️",
+                            key=f"edit_contact_{contact_id}",
+                            help="Edit this lead/contact"
+                        ):
+                        
+                            st.session_state.selected_contact_id = (
+                                contact["contact_id"]
+                            )
+                            st.session_state.selected_contact_admin_id = (
+                                contact["created_by"]
+                            )
+
+                            st.switch_page(
+                                "pages/Follow_Up_Details.py"
+                            )
+
+                    with action_col2:
+                        if st.button(
+                            "🤖",
+                            key=f"ai_{contact_id}",
+                            help="AI Suggestion"
+                        ):
+                            st.session_state.ai_result = get_ai_lead_suggestion(
+                                contact_id=contact["contact_id"],
+                                admin_id=contact["created_by"]
+                            )
+
+
+                    # edit_contact_dialog(contact)
+
+
+            if st.session_state.get("ai_result"):
+                st.divider()
+                st.subheader("🤖 AI Lead Analysis")
+                st.info(st.session_state.ai_result)
+
+            confirm_delete = st.checkbox(
+                "Confirm delete selected lead(s)",
+                key="confirm_delete_selected_contacts"
+            )
+
+            if st.button(
+                "🗑 Delete Selected Lead(s)",
+                use_container_width=True
+            ):
+                if len(selected_contacts) == 0:
+                    st.warning("Please select at least one lead to delete.")
+                elif not confirm_delete:
+                    st.warning("Please confirm before deleting selected lead(s).")
+                else:
+                    for contact in selected_contacts:
+                        delete_contact(
+                            contact_id=contact["contact_id"],
+                            admin_id=admin_id
+                        )
+
+                    st.success("Selected contact(s) deleted successfully")
+                    st.rerun()
     else:
         st.info("📋 No records found.")   
 
@@ -374,6 +456,82 @@ def admin_dashboard():
 
         st.session_state.clear()
         st.rerun()
+
+
+def render_mobile_contacts(contacts):
+
+    selected_contacts = []
+
+    for contact in contacts:
+
+        contact_id = contact["contact_id"]
+
+        with st.container(border=True):
+
+            st.markdown(
+                f"### 📞 {contact.get('name','')}"
+            )
+
+            st.write(
+                f"📱 {contact.get('phone','')}"
+            )
+
+            if contact.get("email"):
+                st.write(
+                    f"📧 {contact.get('email')}"
+                )
+
+            st.write(
+                f"🎯 Status: {contact.get('status','')}"
+            )
+
+            st.write(
+                f"📅 Follow Up: {contact.get('next_followup_at','')}"
+            )
+
+            if contact.get("short_discussion"):
+                st.caption(
+                    contact.get(
+                        "short_discussion",
+                        ""
+                    )
+                )
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+
+                if st.button(
+                    "✏️ Edit",
+                    key=f"edit_{contact_id}",
+                    use_container_width=True
+                ):
+
+                    st.session_state.selected_contact_id = (
+                        contact["contact_id"]
+                    )
+
+                    st.session_state.selected_contact_admin_id = (
+                        contact["created_by"]
+                    )
+
+                    st.switch_page(
+                        "pages/Follow_Up_Details.py"
+                    )
+
+            with c2:
+
+                is_selected = st.checkbox(
+                    "Delete",
+                    key=f"select_{contact_id}"
+                )
+
+                if is_selected:
+                    selected_contacts.append(
+                        contact
+                    )
+
+    return selected_contacts
 
 
 def admin_login():

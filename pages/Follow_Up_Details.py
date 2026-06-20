@@ -79,10 +79,20 @@ with left_col:
         index=current_status_index
     )
 
-    next_followup = st.date_input(
+    
+    followup_date = st.date_input(
         "Next Follow-Up Date",
         value=contact["next_followup_at"] or date.today()
     )
+    followup_time = st.time_input("Next Follow-Up Time")
+
+    next_followup = datetime.combine(
+        followup_date,
+        followup_time
+    )
+    
+    
+   
 
     if st.button(
         "💾 Save Follow-Up",

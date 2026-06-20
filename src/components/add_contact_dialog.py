@@ -3,6 +3,7 @@ from src.database.db import (
    create_contact,
    check_contact_exists_for_admin
 )
+from datetime import datetime
 
 @st.dialog("➕ Add New Contact")
 def add_contact_dialog():
@@ -11,9 +12,14 @@ def add_contact_dialog():
     phone = st.text_input("Phone *")
     email = st.text_input("Email")
     discussion = st.text_area("Discussion")
-    next_followup = st.date_input(
-        "Next Follow-Up Date",
-        key="new_contact_followup_date"
+
+
+    followup_date = st.date_input("Next Follow-Up Date")
+    followup_time = st.time_input("Next Follow-Up Time")
+
+    next_followup = datetime.combine(
+        followup_date,
+        followup_time
     )
 
     if st.button("Save Contact"):
